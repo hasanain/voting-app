@@ -25,11 +25,13 @@ init =
         ]
     , ballots =
         [ [ "Tony Stark", "John Wick" ]
-        , [ "Wally West", "Steve Rogers", "John Wick", "Tony Stark" ]
+        , [ "Wally West", "Steve Rogers", "Tony Stark", "John Wick" ]
         , [ "Steve Rogers", "Wally West", "Tony Stark" ]
         , [ "Tony Stark", "John Wick", "Steve Rogers" ]
-        , []
+        , [ "John Wick" ]
         , [ "Tony Stark" ]
+        , [ "John Wick", "Tony Stark" ]
+        , [ "John Wick", "Tony Stark" ]
         ]
     }
 
@@ -48,6 +50,77 @@ tallyVotes c v p =
             p
 
 
+
+-- instant runoff
+-- run one round of first past the post
+-- if any candidate has a majority or there is only one candidate left -> End the election with the current ranking
+-- else run another round of first past the post with
+--  everyone except the candidate with the least vote
+--  each candidate who voted for the least person's second choice
+
+
+runInstantRunoffElection : Model -> List ( String, Int )
+runInstantRunoffElection ({ candidates, ballots } as election) =
+    let
+        roundResult =
+            runFPTPElection { candidates = candidates, ballots = ballots }
+
+        hasMajority =
+            List.any (\( _, i ) -> i >= List.length ballots // 2) roundResult
+
+        singleCandidateLeft =
+            List.length roundResult == 1
+
+        noCandidatesLeft =
+            List.length roundResult == 0
+
+        justVotes =
+            List.map (\( _, v ) -> v) roundResult
+
+        leastVotes =
+            List.foldl
+                min
+                (List.length ballots)
+                justVotes
+
+        candidatesWithLeastVotes =
+            List.map (\( c, _ ) -> c) <|
+                List.filter
+                    (\( c, i ) -> i == leastVotes)
+                    roundResult
+    in
+    if hasMajority || singleCandidateLeft || noCandidatesLeft then
+        roundResult
+
+    else
+        runInstantRunoffElection <| removeCandidates election candidatesWithLeastVotes
+
+
+removeCandidates : Model -> List String -> Model
+removeCandidates model candidates =
+    case candidates of
+        c :: cs ->
+            removeCandidates (removeCandidate model c) cs
+
+        [] ->
+            model
+
+
+removeCandidate : Model -> String -> Model
+removeCandidate model candidate =
+    let
+        filterCandidates =
+            List.filter (\c -> c /= candidate)
+
+        candidates =
+            filterCandidates model.candidates
+
+        ballots =
+            List.map filterCandidates model.ballots
+    in
+    { model | candidates = candidates, ballots = ballots }
+
+
 runFPTPElection : Model -> List ( String, Int )
 runFPTPElection { candidates, ballots } =
     let
@@ -56,8 +129,8 @@ runFPTPElection { candidates, ballots } =
 
         firstVotes =
             List.map
-                (\r ->
-                    case r of
+                (\b ->
+                    case b of
                         v :: _ ->
                             Just v
 
@@ -95,7 +168,7 @@ rankedCandidatesView : Model -> List (Html Msg)
 rankedCandidatesView model =
     let
         electionResult =
-            runFPTPElection model
+            runInstantRunoffElection model
     in
     List.map candidateView electionResult
 
