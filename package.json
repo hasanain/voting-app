@@ -10,15 +10,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hjamal/voting-app.git"
+    "url": "git+https://github.com/hasanain/voting-app.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/hjamal/voting-app/issues"
+    "url": "https://github.com/hasanain/voting-app/issues"
   },
-  "homepage": "https://github.com/hjamal/voting-app#readme",
+  "homepage": "https://github.com/hasanain/voting-app#readme",
   "devDependencies": {
     "elm": "^0.19.0-no-deps",
     "elm-live": "^3.4.1"
