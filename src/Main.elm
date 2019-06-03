@@ -29,16 +29,7 @@ init =
     in
     { candidates = candidates
     , ballots =
-        [ [ "Tony Stark", "John Wick" ]
-        , [ "Wally West", "Steve Rogers", "Tony Stark", "John Wick" ]
-        , [ "Steve Rogers", "Wally West", "John Wick" ]
-        , [ "Tony Stark", "John Wick", "Steve Rogers" ]
-        , [ "John Wick" ]
-        , [ "Tony Stark" ]
-        , [ "John Wick", "Tony Stark" ]
-        , [ "John Wick", "Tony Stark" ]
-        , [ "Wally West" ]
-        ]
+        []
     , activeBallot = candidates
     }
 
@@ -64,7 +55,6 @@ tallyVotes c v p =
 -- else run another round of first past the post with
 --  everyone except the candidate with the least vote
 --  each candidate who voted for the least person's second choice
--- TODO: what happens when you have every candidate has the same amount of votes
 
 
 runInstantRunoffElection : Model -> List (List ( String, Int ))
@@ -195,6 +185,8 @@ moveItemDown l i =
 type Msg
     = MoveCandidateUp String
     | MoveCandidateDown String
+    | RemoveCandidate String
+    | ResetCandidates
     | AddVote
     | NoOp
 
@@ -208,7 +200,17 @@ update msg model =
             { model | activeBallot = moveItemDown model.activeBallot c }
 
         AddVote ->
-            { model | activeBallot = model.candidates, ballots = model.activeBallot :: model.ballots }
+            if List.length model.activeBallot > 0 then
+                { model | activeBallot = model.candidates, ballots = model.activeBallot :: model.ballots }
+
+            else
+                model
+
+        RemoveCandidate c ->
+            { model | activeBallot = List.filter (\bc -> bc /= c) model.activeBallot }
+
+        ResetCandidates ->
+            { model | activeBallot = model.candidates }
 
         NoOp ->
             model
@@ -284,14 +286,15 @@ addVoteView candidates =
                         (focusedBallotEntryStyle
                             ++ ballotEntryStyle
                         )
-                        [ button [ onClick <| MoveCandidateUp c ] [ text "⬆" ]
+                        [ button [ onClick <| RemoveCandidate c ] [ text "➖" ]
+                        , button [ onClick <| MoveCandidateUp c ] [ text "⬆" ]
                         , button [ onClick <| MoveCandidateDown c ] [ text "⬇" ]
                         , text c
                         ]
                 )
                 candidates
     in
-    div [] <| (children ++ [ div [] [ button [ onClick AddVote ] [ text "Vote" ] ] ])
+    div [] <| (children ++ [ div [] [ button [ onClick AddVote ] [ text "Vote" ], button [ onClick ResetCandidates ] [ text "Reset" ] ] ])
 
 
 ballotEntryStyle =
