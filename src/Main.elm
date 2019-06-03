@@ -1,8 +1,9 @@
 module Main exposing (Model, Msg(..), main, update, view)
 
 import Browser
-import Html exposing (Html, button, div, h2, h3, li, text)
-import Html.Events exposing (onClick)
+import Html exposing (Attribute, Html, button, div, h2, h3, li, ol, text)
+import Html.Attributes exposing (style)
+import Html.Events exposing (keyCode, on, onClick)
 
 
 main =
@@ -12,17 +13,21 @@ main =
 type alias Model =
     { candidates : List String
     , ballots : List (List String)
+    , activeBallot : List String
     }
 
 
 init : Model
 init =
-    { candidates =
-        [ "Tony Stark"
-        , "John Wick"
-        , "Steve Rogers"
-        , "Wally West"
-        ]
+    let
+        candidates =
+            [ "Tony Stark"
+            , "John Wick"
+            , "Steve Rogers"
+            , "Wally West"
+            ]
+    in
+    { candidates = candidates
     , ballots =
         [ [ "Tony Stark", "John Wick" ]
         , [ "Wally West", "Steve Rogers", "Tony Stark", "John Wick" ]
@@ -34,6 +39,7 @@ init =
         , [ "John Wick", "Tony Stark" ]
         , [ "Wally West" ]
         ]
+    , activeBallot = candidates
     }
 
 
@@ -149,12 +155,63 @@ runFPTPElection { candidates, ballots } =
     List.reverse <| List.sortBy (\( _, v ) -> v) tally
 
 
+moveItemUp : List a -> a -> List a
+moveItemUp l i =
+    case l of
+        i1 :: i2 :: r ->
+            if i2 == i then
+                i2 :: i1 :: r
+
+            else if i1 == i then
+                i1 :: i2 :: r
+
+            else
+                i1 :: moveItemUp (i2 :: r) i
+
+        [ i1 ] ->
+            [ i1 ]
+
+        [] ->
+            []
+
+
+moveItemDown : List a -> a -> List a
+moveItemDown l i =
+    case l of
+        i1 :: i2 :: r ->
+            if i1 == i then
+                i2 :: i1 :: r
+
+            else
+                i1 :: moveItemDown (i2 :: r) i
+
+        [ i1 ] ->
+            [ i1 ]
+
+        [] ->
+            []
+
+
 type Msg
-    = NoOp
+    = MoveCandidateUp String
+    | MoveCandidateDown String
+    | AddVote
+    | NoOp
 
 
 update msg model =
-    model
+    case msg of
+        MoveCandidateUp c ->
+            { model | activeBallot = moveItemUp model.activeBallot c }
+
+        MoveCandidateDown c ->
+            { model | activeBallot = moveItemDown model.activeBallot c }
+
+        AddVote ->
+            { model | activeBallot = model.candidates, ballots = model.activeBallot :: model.ballots }
+
+        NoOp ->
+            model
 
 
 candidateView : ( String, Int ) -> Html Msg
@@ -201,10 +258,45 @@ instantRunoffView model =
     List.concatMap (\x -> x) resultsWithLabels
 
 
+view : Model -> Html Msg
 view model =
     div []
-        [ h2 [] [ text "First Past the post" ]
+        [ h2 [] [ text "Candidates" ]
+        , div [] [ div [] (List.map text <| List.intersperse ", " model.candidates) ]
+        , h2 [] [ text "Ballots" ]
+        , ol [] <| List.map (\b -> li [] (List.map text <| List.intersperse ", " b)) model.ballots
+        , h2 [] [ text "Add vote" ]
+        , addVoteView model.activeBallot
+        , h2 [] [ text "First Past the post" ]
         , div [] (rankedCandidatesView model)
         , h2 [] [ text "Instant Runoff" ]
         , div [] (instantRunoffView model)
         ]
+
+
+addVoteView : List String -> Html Msg
+addVoteView candidates =
+    let
+        children =
+            List.map
+                (\c ->
+                    div
+                        (focusedBallotEntryStyle
+                            ++ ballotEntryStyle
+                        )
+                        [ button [ onClick <| MoveCandidateUp c ] [ text "⬆" ]
+                        , button [ onClick <| MoveCandidateDown c ] [ text "⬇" ]
+                        , text c
+                        ]
+                )
+                candidates
+    in
+    div [] <| (children ++ [ div [] [ button [ onClick AddVote ] [ text "Vote" ] ] ])
+
+
+ballotEntryStyle =
+    [ style "padding" "5px", style "margin" "5px" ]
+
+
+focusedBallotEntryStyle =
+    [ style "border" "1px solid black" ]
