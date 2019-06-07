@@ -1,9 +1,9 @@
 module Main exposing (Model, Msg(..), main, update, view)
 
 import Browser
-import Html exposing (Attribute, Html, button, div, h2, h3, li, ol, text)
-import Html.Attributes exposing (style)
-import Html.Events exposing (keyCode, on, onClick)
+import Html exposing (Attribute, Html, button, div, h2, h3, input, li, ol, text)
+import Html.Attributes exposing (style, value)
+import Html.Events exposing (keyCode, on, onClick, onInput)
 
 
 main =
@@ -14,6 +14,7 @@ type alias Model =
     { candidates : List String
     , ballots : List (List String)
     , activeBallot : List String
+    , newCandidate : String
     }
 
 
@@ -21,16 +22,13 @@ init : Model
 init =
     let
         candidates =
-            [ "Tony Stark"
-            , "John Wick"
-            , "Steve Rogers"
-            , "Wally West"
-            ]
+            []
     in
     { candidates = candidates
     , ballots =
         []
     , activeBallot = candidates
+    , newCandidate = ""
     }
 
 
@@ -188,6 +186,8 @@ type Msg
     | RemoveCandidate String
     | ResetCandidates
     | AddVote
+    | AddCandidate
+    | TrackCandidate String
     | NoOp
 
 
@@ -211,6 +211,24 @@ update msg model =
 
         ResetCandidates ->
             { model | activeBallot = model.candidates }
+
+        AddCandidate ->
+            if model.newCandidate == "" then
+                model
+
+            else
+                let
+                    updatedCandidates =
+                        model.newCandidate :: model.candidates
+                in
+                { model
+                    | candidates = updatedCandidates
+                    , newCandidate = ""
+                    , activeBallot = updatedCandidates
+                }
+
+        TrackCandidate nc ->
+            { model | newCandidate = nc }
 
         NoOp ->
             model
@@ -264,6 +282,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ h2 [] [ text "Candidates" ]
+        , div [] [ input [ onInput TrackCandidate, value model.newCandidate ] [], button [ onClick AddCandidate ] [ text "Add Candidate" ] ]
         , div [] [ div [] (List.map text <| List.intersperse ", " model.candidates) ]
         , h2 [] [ text "Ballots" ]
         , ol [] <| List.map (\b -> li [] (List.map text <| List.intersperse ", " b)) model.ballots
